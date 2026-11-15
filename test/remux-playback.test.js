@@ -21,7 +21,7 @@ test('probe preserves every audio track index including unknown codecs', () => {
 
 function playerFixture(name, settings, probe, navigator = { userAgent: 'Mozilla/5.0 (X11; Linux x86_64)', maxTouchPoints: 0 }) {
     const window = { dispatchEvent() {} };
-    const context = { window, navigator, HlsAudioRecovery: require('../public/js/components/HlsAudioRecovery'), PlaybackProbe: require('../public/js/components/PlaybackProbe'), CaptionTracks: require('../public/js/components/CaptionTracks'), VodDuration: require('../public/js/components/VodDuration'), console: { log() {}, warn() {}, error() {} },
+    const context = { window, navigator, HlsAudioRecovery: require('../public/js/components/HlsAudioRecovery'), PlaybackProbe: require('../public/js/components/PlaybackProbe'), CaptionTracks: require('../public/js/components/CaptionTracks'), AudioTracks: require('../public/js/components/AudioTracks'), VodDuration: require('../public/js/components/VodDuration'), console: { log() {}, warn() {}, error() {} },
         CustomEvent: class {}, document: { getElementById() { return null; } },
         API: { settings: { get: async () => settings } }, fetch: probe };
     const file = name === 'VideoPlayer' ? 'components/VideoPlayer.js' : 'pages/WatchPage.js';

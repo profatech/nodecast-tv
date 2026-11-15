@@ -34,7 +34,7 @@ test('Watch VOD probes expose real embedded subtitles for HLS and remux, align s
         run(['-i', movie, '-map', '0', '-c:v', 'copy', '-c:a', 'copy', '-c:s', 'mov_text', direct]);
         for (const [name, offset] of [['video', '0'], ['seek', '6']]) run(['-ss', offset, '-i', movie, '-map', '0:v', '-map', '0:a', '-c', 'copy',
             '-f', 'hls', '-hls_time', '1', '-hls_list_size', '0', '-hls_segment_filename', path.join(dir, name + '%d.ts'), path.join(dir, name + '.m3u8')]);
-        const scripts = ['/js/components/CaptionTracks.js', '/js/components/HlsAudioRecovery.js', '/js/components/PlaybackProbe.js',
+        const scripts = ['/js/components/CaptionTracks.js', '/js/components/AudioTracks.js', '/js/components/HlsAudioRecovery.js', '/js/components/PlaybackProbe.js',
             '/js/components/VodDuration.js', '/js/pages/WatchPage.js'], root = path.join(__dirname, '../public');
         const app = express(), requests = [];
         app.locals.ffmpegPath = binary;

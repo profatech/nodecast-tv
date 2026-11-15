@@ -17,7 +17,7 @@ function playerFixture(name, settings, fetcher) {
     const document = { getElementById() { return null; }, removeEventListener() {} };
     const probe = { video: 'h264', audio: 'aac', audioChannels: 2, audioCodecs: ['aac'], needsRemux: true };
     const context = { window, document, AbortController, setTimeout, clearTimeout, CustomEvent: class {},
-        PlaybackProbe: require('../public/js/components/PlaybackProbe'), CaptionTracks: require('../public/js/components/CaptionTracks'),
+        PlaybackProbe: require('../public/js/components/PlaybackProbe'), CaptionTracks: require('../public/js/components/CaptionTracks'), AudioTracks: require('../public/js/components/AudioTracks'),
         VodDuration: require('../public/js/components/VodDuration'), console: { log() {}, warn() {}, error() {} },
         API: { settings: { get: async () => settings } },
         fetch: async (url, options) => {

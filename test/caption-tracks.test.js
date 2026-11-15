@@ -24,7 +24,7 @@ test('both subtitle menus select real HLS cues, discard stale tracks and preserv
         assert.equal(generated.status, 0, generated.stderr);
 
         const root = path.join(__dirname, '../public');
-        const scripts = ['/js/components/CaptionTracks.js', '/js/components/HlsAudioRecovery.js', '/js/components/PlaybackProbe.js', '/js/components/PlayerFullscreen.js', '/js/components/VideoPlayer.js', '/js/pages/WatchPage.js'];
+        const scripts = ['/js/components/CaptionTracks.js', '/js/components/AudioTracks.js', '/js/components/HlsAudioRecovery.js', '/js/components/PlaybackProbe.js', '/js/components/PlayerFullscreen.js', '/js/components/VideoPlayer.js', '/js/pages/WatchPage.js'];
         const master = names => '#EXTM3U\n' + names.map(([name, extra, language = 'en'], index) =>
             `#EXT-X-MEDIA:TYPE=SUBTITLES,GROUP-ID="subs",NAME="${name}",LANGUAGE="${language}",DEFAULT=NO,AUTOSELECT=NO,${extra}URI="/sub${index}.m3u8"\n`).join('') +
             '#EXT-X-STREAM-INF:BANDWIDTH=100000,CODECS="avc1.42c00a",SUBTITLES="subs"\n/video.m3u8\n';

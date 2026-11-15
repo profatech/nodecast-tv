@@ -136,7 +136,7 @@ for (const name of ['VideoPlayer', 'WatchPage']) {
         }
         const file = name === 'VideoPlayer' ? 'components/VideoPlayer.js' : 'pages/WatchPage.js';
         vm.runInNewContext(fs.readFileSync(path.join(__dirname, '../public/js', file), 'utf8'), {
-            window, Hls, HlsAudioRecovery, CaptionTracks: require('../public/js/components/CaptionTracks'), console
+            window, Hls, HlsAudioRecovery, CaptionTracks: require('../public/js/components/CaptionTracks'), AudioTracks: require('../public/js/components/AudioTracks'), console
         });
         const player = Object.create(window[name].prototype);
         Object.assign(player, { playbackGeneration: 1, video: { currentTime: 42, paused: false,

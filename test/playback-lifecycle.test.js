@@ -267,7 +267,7 @@ for (const name of ['VideoPlayer', 'WatchPage']) {
             loadSource() {} attachMedia() {} destroy() { this.destroyed = true; }
         }
         const file = name === 'VideoPlayer' ? 'components/VideoPlayer.js' : 'pages/WatchPage.js';
-        vm.runInNewContext(fs.readFileSync(path.join(__dirname, '../public/js', file), 'utf8'), { window, Hls, HlsAudioRecovery: require('../public/js/components/HlsAudioRecovery'), PlaybackProbe: require('../public/js/components/PlaybackProbe'), CaptionTracks: require('../public/js/components/CaptionTracks'), console: { log() {}, error() {} } });
+        vm.runInNewContext(fs.readFileSync(path.join(__dirname, '../public/js', file), 'utf8'), { window, Hls, HlsAudioRecovery: require('../public/js/components/HlsAudioRecovery'), PlaybackProbe: require('../public/js/components/PlaybackProbe'), CaptionTracks: require('../public/js/components/CaptionTracks'), AudioTracks: require('../public/js/components/AudioTracks'), console: { log() {}, error() {} } });
         const player = Object.create(window[name].prototype);
         let plays = 0;
         player.video = { play: async () => { plays++; } };
