@@ -31,14 +31,18 @@ transcodeSession.startCleanupInterval();
 /**
  * Create a new transcode session
  * POST /api/transcode/session
- * Body: { url: string, seekOffset?: number }
+ * Body: { url: string, seekOffset?: number, audioTrack?: number }
  */
 router.post('/session', startupLimit, async (req, res) => {
-    const { url, seekOffset, videoMode, videoCodec, audioCodec, audioChannels, videoHeight, playbackLeaseId, requestSequence, isLive, program } = req.body;
+    const { url, seekOffset, videoMode, videoCodec, audioCodec, audioChannels, videoHeight, playbackLeaseId, requestSequence, isLive, program, audioTrack, subtitleStreams } = req.body;
     let programNumber;
     try { programNumber = parseProgram(program); } catch (error) { return res.status(400).json({ error: error.message }); }
     const normalizedSeek = Number(seekOffset ?? 0);
     if (!Number.isFinite(normalizedSeek) || normalizedSeek < 0) return res.status(400).json({ error: "Invalid seek offset" });
+    const normalizedAudioTrack = audioTrack ?? 0;
+    if (!Number.isInteger(normalizedAudioTrack) || normalizedAudioTrack < 0 || normalizedAudioTrack > 63) return res.status(400).json({ error: "Invalid audio track" });
+    if (subtitleStreams != null && (!Array.isArray(subtitleStreams) || subtitleStreams.length > 16 || new Set(subtitleStreams).size !== subtitleStreams.length ||
+        subtitleStreams.some(index => !Number.isInteger(index) || index < 0 || index > 255))) return res.status(400).json({ error: "Invalid subtitle streams" });
     let session = null, disconnected = false;
     res.once("close", () => {
         if (!res.writableEnded) {
@@ -75,6 +79,8 @@ router.post('/session', startupLimit, async (req, res) => {
             videoCodec: videoCodec, // 'h264', 'hevc', etc.
             audioCodec: audioCodec, // 'aac', 'ac3', etc.
             audioChannels: audioChannels, // number of channels (2=stereo)
+            audioTrack: normalizedAudioTrack, // 0-based ordinal among audio streams (probe audioTracks[].track)
+            subtitleStreams: subtitleStreams ?? [], // text subtitle stream indexes written as WebVTT files
             videoHeight: videoHeight, // source height from probe; used to cap max-resolution in JS
             program: programNumber
         });
@@ -83,7 +89,17 @@ router.post('/session', startupLimit, async (req, res) => {
         await session.start();
 
         // Wait for playlist to be ready (first segments generated)
-        const ready = await session.waitForPlaylist(15000);
+        let ready = await session.waitForPlaylist(15000);
+        if (!ready && !disconnected && await session.retryWithoutSubtitles()) ready = await session.waitForPlaylist(15000);
+        // A fast seek starts on a keyframe near the requested position: tell the player where.
+        let startTime = normalizedSeek;
+        if (ready && !disconnected && !session.retired) {
+            startTime = await session.resolveStartTime(req.app.locals.ffprobePath);
+            if (startTime === null) {
+                startTime = normalizedSeek;
+                ready = await session.waitForPlaylist(15000);
+            }
+        }
 
         if (disconnected || session.retired) { await transcodeSession.removeSession(session.id, req.user.id); return; }
         if (!ready) {
@@ -94,6 +110,7 @@ router.post('/session', startupLimit, async (req, res) => {
         res.json({
             sessionId: session.id,
             playlistUrl: `/api/transcode/${session.id}/stream.m3u8`,
+            startTime,
             status: session.status
         });
 
@@ -138,6 +155,20 @@ router.get('/:sessionId/stream.m3u8', async (req, res) => {
     res.setHeader('Content-Type', 'application/vnd.apple.mpegurl');
     res.setHeader('Cache-Control', 'no-cache');
     res.send(playlist);
+});
+
+/**
+ * Get the subtitles extracted so far for a session
+ * GET /api/transcode/:sessionId/subtitles/sub<streamIndex>.vtt
+ */
+router.get('/:sessionId/subtitles/:name', async (req, res) => {
+    const session = transcodeSession.getSession(req.params.sessionId, req.user.id);
+    if (!session) return res.status(404).json({ error: 'Session not found' });
+    const subtitles = await session.getSubtitle(req.params.name);
+    if (subtitles === null) return res.status(404).json({ error: 'Invalid subtitle' });
+    res.setHeader('Content-Type', 'text/vtt; charset=utf-8');
+    res.setHeader('Cache-Control', 'no-store');
+    res.send(subtitles);
 });
 
 /**

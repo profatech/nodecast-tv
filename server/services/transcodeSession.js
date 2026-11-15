@@ -36,6 +36,19 @@ function normalizePlaybackLeaseId(value) {
     if (typeof value !== "string" || !/^[A-Za-z0-9_-]{16,128}$/.test(value)) throw leaseError("Invalid playback lease", 400);
     return value;
 }
+/** Optional 0-based audio stream ordinal (probe audioTracks[].track); interpolated into -map. */
+function parseAudioTrack(value) {
+    if (value === undefined || value === null) return 0;
+    if (!Number.isInteger(value) || value < 0 || value > 63) throw leaseError("Invalid audio track", 400);
+    return value;
+}
+/** Text subtitle streams (absolute stream indexes) to write next to the video as WebVTT files. */
+function parseSubtitleStreams(value) {
+    if (value === undefined || value === null) return [];
+    if (!Array.isArray(value) || value.length > 16 || new Set(value).size !== value.length ||
+        value.some(index => !Number.isInteger(index) || index < 0 || index > 255)) throw leaseError("Invalid subtitle streams", 400);
+    return [...value];
+}
 function pruneLeases() {
     const now = Date.now();
     for (const [key, lease] of leases) if (lease.until <= now) leases.delete(key);
@@ -48,6 +61,7 @@ const CACHE_DIR = path.join(process.cwd(), 'transcode-cache');
 // Session settings
 const SESSION_TIMEOUT_MS = 30 * 60 * 1000; // 30 minutes idle timeout
 const SEGMENT_DURATION = 4; // seconds per HLS segment
+const FAST_SEEK_TOLERANCE = 30; // seconds a fast seek may start away from the requested position
 const CLEANUP_INTERVAL_MS = 30 * 1000; // Check every 5 minutes
 
 /**
@@ -105,7 +119,9 @@ class TranscodeSession extends EventEmitter {
             upscaleMethod: options.upscaleMethod || 'hardware', // 'hardware' or 'software'
             upscaleTarget: options.upscaleTarget || '1080p',
             ...options,
-            program: parseProgram(options.program)
+            program: parseProgram(options.program),
+            audioTrack: parseAudioTrack(options.audioTrack),
+            subtitleStreams: parseSubtitleStreams(options.subtitleStreams)
         };
     }
 
@@ -224,10 +240,17 @@ class TranscodeSession extends EventEmitter {
             '-reconnect_delay_max', '10'
         );
 
+        // Seek on the input so FFmpeg jumps to the position (HTTP Range) instead of downloading
+        // everything before it. -copyts keeps source timestamps so the real start can be measured.
+        const fastSeek = this.usesFastSeek();
+        if (fastSeek) args.push('-ss', String(this.options.seekOffset), '-noaccurate_seek');
+
         args.push('-i', this.url);
 
-        // Add seek offset if specified (as output option to avoid Range requests)
-        if (this.options.seekOffset > 0) {
+        if (fastSeek) {
+            args.push('-copyts');
+        } else if (this.options.seekOffset > 0) {
+            // Fallback for providers without Range support: read from the start and discard
             args.push('-ss', String(this.options.seekOffset));
         }
 
@@ -236,10 +259,10 @@ class TranscodeSession extends EventEmitter {
         // DVB teletext/subtitle streams, which can't be encoded to HLS and kill FFmpeg
         if (this.options.program) {
             args.push('-map', `0:p:${this.options.program}:v:0`);
-            args.push('-map', `0:p:${this.options.program}:a:0?`);
+            args.push('-map', `0:p:${this.options.program}:a:${this.options.audioTrack}?`);
         } else {
             args.push('-map', '0:v:0');
-            args.push('-map', '0:a:0?');
+            args.push('-map', `0:a:${this.options.audioTrack}?`);
         }
 
         // Add video encoder and filters based on selected encoder OR copy
@@ -297,6 +320,9 @@ class TranscodeSession extends EventEmitter {
             );
         }
 
+        // Without the muxer's start delay the first segment starts at the source timestamp
+        if (fastSeek) args.push('-muxdelay', '0', '-muxpreload', '0');
+
         // HLS output options
         args.push(
             '-f', 'hls',
@@ -307,6 +333,15 @@ class TranscodeSession extends EventEmitter {
             '-hls_segment_filename', path.join(this.dir, 'seg%04d.ts'),
             this.playlistPath
         );
+
+        // Subtitles come out of the same input connection as growing WebVTT files. A separate
+        // extraction would open one more provider connection per track and read the whole file.
+        if (!this.options.isLive && !this.withoutSubtitles) {
+            for (const index of this.options.subtitleStreams) {
+                args.push('-map', `0:${index}`, '-c:s', 'webvtt', '-flush_packets', '1', '-f', 'webvtt',
+                    path.join(this.dir, `sub${index}.vtt`));
+            }
+        }
 
         return args;
     }
@@ -569,6 +604,75 @@ class TranscodeSession extends EventEmitter {
             finally { clearTimeout(force); }
         }
         this.status = 'stopped';
+    }
+
+    /** VOD seeks use a fast input seek unless the provider turned out not to support it. */
+    usesFastSeek() {
+        return this.options.seekOffset > 0 && !this.options.isLive && !this.legacySeek;
+    }
+
+    /** Source timestamp of the first generated segment, or null when it cannot be read. */
+    async measureStartTime(ffprobePath) {
+        const playlist = await fs.readFile(this.playlistPath, 'utf8').catch(() => '');
+        const segment = playlist.match(/^seg[0-9]+\.ts$/m)?.[0];
+        if (!segment || !ffprobePath) return null;
+        return new Promise(resolve => {
+            const child = spawn(ffprobePath, ['-v', 'error', '-show_entries', 'format=start_time', '-of', 'csv=p=0',
+                path.join(this.dir, segment)], { windowsHide: true });
+            let output = '';
+            const timer = setTimeout(() => child.kill('SIGKILL'), 5000);
+            child.stdout.on('data', data => { output += data; });
+            child.on('error', () => { clearTimeout(timer); resolve(null); });
+            child.on('close', () => {
+                clearTimeout(timer);
+                const value = Number(output.trim());
+                resolve(output.trim() && Number.isFinite(value) && value >= 0 ? value : null);
+            });
+        });
+    }
+
+    /**
+     * Content time at which the output really starts. A fast seek lands on the keyframe before
+     * the requested position. Returns null after falling back to the slow seek: the caller must
+     * then wait for the new playlist, which starts exactly at the requested position.
+     */
+    async resolveStartTime(ffprobePath) {
+        const requested = this.options.seekOffset || 0;
+        if (!this.usesFastSeek()) return requested;
+        const measured = await this.measureStartTime(ffprobePath);
+        if (measured !== null && Math.abs(measured - requested) <= FAST_SEEK_TOLERANCE) return measured;
+        if (this.retired) return requested;
+        console.log(`[TranscodeSession ${this.id}] Fast seek to ${requested}s started at ${measured ?? 'an unknown time'}; using slow seek`);
+        if (!await this.restartWith({ legacySeek: true })) return requested;
+        return null;
+    }
+
+    /** Start FFmpeg again with a fallback flag set, discarding what it produced so far. */
+    async restartWith(flags) {
+        if (this.retired) return false;
+        await this.stop();
+        if (this.retired) return false;
+        for (const name of await fs.readdir(this.dir).catch(() => [])) {
+            if (/^(seg[0-9]+\.ts|stream\.m3u8|sub[0-9]+\.vtt)$/.test(name)) await fs.rm(path.join(this.dir, name), { force: true });
+        }
+        Object.assign(this, flags);
+        this.error = null;
+        await this.start();
+        return true;
+    }
+
+    /** Subtitle output is optional: a stream FFmpeg cannot convert must not prevent playback. */
+    async retryWithoutSubtitles() {
+        if (this.status !== 'error' || this.withoutSubtitles || this.options.isLive || !this.options.subtitleStreams.length) return false;
+        console.log(`[TranscodeSession ${this.id}] FFmpeg failed with subtitle outputs; retrying without them`);
+        return this.restartWith({ withoutSubtitles: true });
+    }
+
+    /** WebVTT written so far for one subtitle stream of this session. */
+    async getSubtitle(name) {
+        this.touch();
+        if (!/^sub[0-9]+\.vtt$/.test(name)) return null;
+        return fs.readFile(path.join(this.dir, name), 'utf8').catch(() => 'WEBVTT\n\n');
     }
 
     /**

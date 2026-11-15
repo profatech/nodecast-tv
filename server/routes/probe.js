@@ -28,6 +28,8 @@ const CACHE_TTL = 5 * 60 * 1000; // 5 minutes
 // Browser-compatible codecs
 const BROWSER_VIDEO_CODECS = ['h264', 'avc', 'avc1'];
 const BROWSER_AUDIO_CODECS = ['aac', 'mp3', 'opus', 'vorbis'];
+// Bitmap subtitle codecs cannot be converted to WebVTT by /api/subtitle
+const BITMAP_SUBTITLE_CODECS = ['hdmv_pgs_subtitle', 'dvd_subtitle', 'dvb_subtitle', 'xsub', 'dvb_teletext'];
 
 /**
  * Probe stream with ffprobe
@@ -112,7 +114,21 @@ function analyzeProbeResult(probeResult, url, program = null) {
             index: s.index,
             language: s.tags?.language || 'und',
             title: s.tags?.title || s.tags?.language || `Track ${s.index}`,
-            codec: s.codec_name
+            codec: s.codec_name,
+            text: !BITMAP_SUBTITLE_CODECS.includes(s.codec_name?.toLowerCase())
+        }));
+
+    // Audio tracks: `track` is the ordinal used by the transcoder's -map 0:a:N
+    const audioTracks = streams
+        .filter(s => s.codec_type === 'audio')
+        .map((s, track) => ({
+            index: s.index,
+            track: track,
+            language: s.tags?.language || 'und',
+            title: s.tags?.title || '',
+            codec: s.codec_name?.toLowerCase() || 'unknown',
+            channels: s.channels || 0,
+            default: s.disposition?.default === 1
         }));
 
     // Determine what processing is needed
@@ -139,6 +155,7 @@ function analyzeProbeResult(probeResult, url, program = null) {
         width: videoStream?.width || 0,
         height: videoStream?.height || 0,
         audioChannels: audioStream?.channels || 0, // For Smart Audio Copy
+        audioTracks: audioTracks,
         container: container,
         compatible: compatible,
         needsRemux: needsRemux,
