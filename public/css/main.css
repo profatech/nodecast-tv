@@ -3695,6 +3695,15 @@ kbd {
   content: "✓ ";
 }
 
+.captions-load-file {
+  border-top: 1px solid var(--glass-border);
+  color: var(--color-text-muted);
+}
+
+.watch-captions-menu .captions-option {
+  white-space: nowrap;
+}
+
 .watch-btn-lg {
   width: 64px;
   height: 64px;

@@ -64,6 +64,14 @@ class WatchPage {
         this.captionsBtn = document.getElementById('watch-captions-btn');
         this.captionsMenu = document.getElementById('watch-captions-menu');
         this.captionsList = document.getElementById('watch-captions-list');
+        this.subtitleLoadBtn = document.getElementById('watch-subtitle-load');
+        this.subtitleFileInput = document.getElementById('watch-subtitle-file');
+
+        // Audio tracks
+        this.audioWrapper = document.getElementById('watch-audio-wrapper');
+        this.audioBtn = document.getElementById('watch-audio-btn');
+        this.audioMenu = document.getElementById('watch-audio-menu');
+        this.audioList = document.getElementById('watch-audio-list');
 
         // Transcode Status
         this.transcodeStatusEx = document.getElementById('watch-transcode-status');
@@ -79,6 +87,7 @@ class WatchPage {
         this.isFavorite = false;
         this.returnPage = null;
         this.captionsMenuOpen = false;
+        this.audioMenuOpen = false;
 
         // Overlay timer
         this.overlayTimeout = null;
@@ -227,6 +236,30 @@ class WatchPage {
             }
         });
 
+        // Load a local subtitle file
+        this.subtitleLoadBtn?.addEventListener('click', (e) => {
+            e.stopPropagation();
+            this.subtitleFileInput?.click();
+        });
+        this.subtitleFileInput?.addEventListener('click', (e) => e.stopPropagation());
+        this.subtitleFileInput?.addEventListener('change', () => {
+            const file = this.subtitleFileInput.files?.[0];
+            this.subtitleFileInput.value = '';
+            this.loadSubtitleFile(file);
+        });
+
+        // Audio track menu
+        this.audioBtn?.addEventListener('click', (e) => {
+            e.stopPropagation();
+            this.toggleAudioMenu();
+        });
+
+        document.addEventListener('click', (e) => {
+            if (this.audioMenuOpen && !this.audioMenu?.contains(e.target) && e.target !== this.audioBtn) {
+                this.closeAudioMenu();
+            }
+        });
+
         // Hide scroll hint after scrolling
         const watchPage = document.getElementById('page-watch');
         watchPage?.addEventListener('scroll', () => {
@@ -333,11 +366,20 @@ class WatchPage {
         const generation = this.playbackGeneration;
         this.playbackSessions ||= new PlaybackSessions(false);
         const sessionOptions = { seekOffset: this.resumeTime, ...options };
+        // The session writes the text subtitles itself, so showing one needs no extra provider connection.
+        const subtitleStreams = this.captionTracks?.sessionStreams?.() || [];
+        if (subtitleStreams.length) sessionOptions.subtitleStreams = subtitleStreams;
+        // Known before the request resolves, so an audio switch during startup keeps the video mode.
+        this.requestedTranscodeOptions = sessionOptions;
         try {
             const session = await this.playbackSessions.create(url, sessionOptions);
             if (generation !== this.playbackGeneration) return null;
             this.currentSessionId = session.sessionId;
-            this.playbackTimeOffset = Number(sessionOptions.seekOffset) || 0;
+            this.captionTracks?.setSession?.(session.sessionId, subtitleStreams);
+            // The server reports where a seek really landed (the keyframe before the request).
+            const startTime = Number(session.startTime);
+            this.playbackTimeOffset = session.startTime != null && Number.isFinite(startTime) && startTime >= 0
+                ? startTime : Number(sessionOptions.seekOffset) || 0;
             this.resumeTime = 0;
             this.currentTranscodeOptions = sessionOptions;
             return session.playlistUrl;
@@ -354,6 +396,7 @@ class WatchPage {
 
     stopTranscodeSession() {
         this.playbackSessions?.stop();
+        this.captionTracks?.setSession?.(null);
         this.currentSessionId = null;
         this.playbackTimeOffset = 0;
     }
@@ -439,7 +482,7 @@ class WatchPage {
                 const info = await (this.playbackProbe ||= new PlaybackProbe(fetch)).read(url, { program, userAgent: ua || '' });
                 if (this.playbackGeneration !== playbackGeneration) return;
                 probeInfo = info;
-                this.getCaptionTracks().setProbe(info, url);
+                this.applyProbe(info, url);
                 this.setSourceDuration(info.duration);
                 console.log(`[WatchPage] Probe result: video=${info.video}, audio=${info.audio}, ${info.width}x${info.height}, compatible=${info.compatible}`);
 
@@ -465,17 +508,23 @@ class WatchPage {
                         videoCodec: info.video,
                         audioCodec: info.audio,
                         audioChannels: info.audioChannels,
-                        videoHeight: info.height
+                        videoHeight: info.height,
+                        ...this.getAudioTracks().sessionOptions()
                     });
                     if (!playlistUrl || this.playbackGeneration !== playbackGeneration) return;
                     this.playHls(playlistUrl);
                     this.setVolumeFromStorage();
                     return;
-                } else if (info.needsRemux) {
+                } else if (info.needsRemux || this.getAudioTracks().explicit) {
+                    // A remembered audio language needs a session even when the file could play directly.
                     console.log('[WatchPage] Auto: Using seekable remux session');
-                    this.updateTranscodeStatus('remuxing', 'Remux (Auto)');
-                    await this.playRemuxSession(url, info, program, playbackGeneration);
-                    return;
+                    this.updateTranscodeStatus('remuxing', info.needsRemux ? 'Remux (Auto)' : 'Remux (Audio)');
+                    const started = await this.playRemuxSession(url, info, program, playbackGeneration);
+                    if (started || info.needsRemux || this.playbackGeneration !== playbackGeneration) return;
+                    // The remembered language could not be served: play the file directly instead.
+                    this.requestedTranscodeOptions = null;
+                    this.getAudioTracks().setTracks(info.audioTracks);
+                    this.updateAudioTracks();
                 }
                 // Compatible - fall through to normal playback
                 console.log('[WatchPage] Auto: Using normal playback (compatible)');
@@ -497,7 +546,8 @@ class WatchPage {
             const playlistUrl = await this.startTranscodeSession(url, {
                 program,
                 videoMode: 'encode',
-                seekOffset: this.resumeTime
+                seekOffset: this.resumeTime,
+                ...this.getAudioTracks().sessionOptions()
             });
             if (!playlistUrl || this.playbackGeneration !== playbackGeneration) return;
             this.playHls(playlistUrl);
@@ -516,7 +566,7 @@ class WatchPage {
                 const info = await (this.playbackProbe ||= new PlaybackProbe(fetch)).read(url, { program, userAgent: ua || '' });
                 if (this.playbackGeneration !== playbackGeneration) return;
                 videoCodec = info.video;
-                this.getCaptionTracks().setProbe(info, url);
+                this.applyProbe(info, url);
             } catch (e) { if (e.name === 'AbortError') return; console.warn('Probe failed for force audio, assuming h264'); }
 
             if (this.playbackGeneration !== playbackGeneration) return;
@@ -524,7 +574,8 @@ class WatchPage {
                 program,
                 videoMode: 'copy',
                 videoCodec,
-                seekOffset: this.resumeTime
+                seekOffset: this.resumeTime,
+                ...this.getAudioTracks().sessionOptions()
             });
             if (!playlistUrl || this.playbackGeneration !== playbackGeneration) return;
             this.playHls(playlistUrl);
@@ -540,6 +591,7 @@ class WatchPage {
                 try {
                     const ua = settings.userAgentPreset === 'custom' ? settings.userAgentCustom : settings.userAgentPreset;
                     probeInfo = await (this.playbackProbe ||= new PlaybackProbe(fetch)).read(url, { program, userAgent: ua || '' });
+                    if (this.playbackGeneration === playbackGeneration) this.applyProbe(probeInfo, url);
                 } catch (error) {
                     if (error.name === 'AbortError') return;
                     console.warn('[WatchPage] Remux probe failed:', error.message);
@@ -580,11 +632,25 @@ class WatchPage {
         const playlist = await this.startTranscodeSession(url, {
             program, videoMode: 'copy', seekOffset: this.resumeTime,
             videoCodec: info?.video, audioCodec: info?.audio,
-            audioChannels: info?.audioChannels, videoHeight: info?.height
+            audioChannels: info?.audioChannels, videoHeight: info?.height,
+            ...this.getAudioTracks().sessionOptions()
         });
-        if (!playlist || this.playbackGeneration !== generation) return;
+        if (!playlist || this.playbackGeneration !== generation) return false;
         this.playHls(playlist);
         this.setVolumeFromStorage();
+        return true;
+    }
+
+    /** Share one probe result with the subtitle and audio menus and apply the remembered languages. */
+    applyProbe(info, url) {
+        this.probeInfo = info;
+        const captions = this.getCaptionTracks(), audio = this.getAudioTracks();
+        captions.setProbe(info, url);
+        captions.preferLanguage(this.getStoredSubtitleLanguage());
+        audio.setTracks(info?.audioTracks);
+        const preferred = audio.preferred();
+        if (preferred) audio.select(preferred, { remember: false });
+        this.updateAudioTracks();
     }
 
     playHls(url) {
@@ -692,6 +758,12 @@ class WatchPage {
         }
         this.getCaptionTracks().reset();
         this.closeCaptionsMenu();
+        this.probeInfo = null;
+        this.requestedTranscodeOptions = null;
+        this.audioSwitchOrigin = null;
+        this.getAudioTracks().reset();
+        this.updateAudioTracks();
+        this.closeAudioMenu();
         if (this.video) {
             this.video.pause();
             this.video.src = '';
@@ -738,8 +810,67 @@ class WatchPage {
         this.hls = null;
         this.video.pause();
         this.showLoading();
-        const playlist = await this.startTranscodeSession(this.currentUrl, { ...this.currentTranscodeOptions, seekOffset: target });
+        const playlist = await this.startTranscodeSession(this.currentUrl, { ...this.currentTranscodeOptions, ...this.audioTracks?.sessionOptions(), seekOffset: target });
         if (playlist && generation === this.playbackGeneration) this.playHls(playlist);
+    }
+
+    /** Chrome cannot switch audio natively: restart the session at this position with the chosen stream. */
+    async switchAudioTrack(track) {
+        const audio = this.getAudioTracks();
+        if (!this.video || !this.currentUrl || !audio.tracks.includes(track)) return;
+        const generation = this.playbackGeneration;
+        // Options of the session this video asked for, even while it is still starting.
+        const session = this.requestedTranscodeOptions;
+        const wasHls = !!this.hls;
+        const target = this.getCurrentPlaybackTime() || this.resumeTime || 0;
+        // What is really playing, kept across switches that supersede each other.
+        const playing = this.audioSwitchOrigin ||= { selected: audio.selected, explicit: audio.explicit };
+        // Without a session the file plays directly: keep the compatible video and remux it with the new audio.
+        const base = session || { program: this.content?.program ?? this.content?.data?.program ?? null, videoMode: 'copy',
+            videoCodec: this.probeInfo?.video, videoHeight: this.probeInfo?.height };
+        const options = { ...base, ...audio.select(track, { remember: false }), seekOffset: target };
+        this.updateAudioTracks();
+        this.pendingSeekProgress = target;
+        this.captionTracks?.captureRemoteSelection();
+        this.hls?.destroy();
+        this.hls = null;
+        this.video.pause();
+        this.showLoading();
+        const request = this.startTranscodeSession(this.currentUrl, options);
+        const requested = this.requestedTranscodeOptions;
+        const playlist = await request;
+        if (generation !== this.playbackGeneration) { this.audioSwitchOrigin = null; return; }
+        if (playlist) {
+            this.audioSwitchOrigin = null;
+            audio.select(track); // remember the language only once it really plays
+            if (!session) this.updateTranscodeStatus('remuxing', 'Remux (Audio)');
+            this.playHls(playlist);
+            return;
+        }
+        // Superseded by a newer switch or seek, which now owns playback.
+        if (audio.selected !== track.track || this.requestedTranscodeOptions !== requested) {
+            // A seek took over and carries this track along.
+            if (audio.selected === track.track) this.audioSwitchOrigin = null;
+            return;
+        }
+        // The session failed: show and resume what was really playing.
+        this.audioSwitchOrigin = null;
+        Object.assign(audio, playing);
+        this.updateAudioTracks();
+        this.pendingSeekProgress = null;
+        if (!session && !wasHls) {
+            this.requestedTranscodeOptions = null;
+            this.updateTranscodeStatus('direct', 'Direct Play');
+            this.hideLoading();
+            this.video.play().catch(() => {});
+        } else if (session) {
+            this.showLoading();
+            const previous = await this.startTranscodeSession(this.currentUrl, { ...session, seekOffset: target });
+            if (previous && generation === this.playbackGeneration) this.playHls(previous);
+        } else {
+            this.resumeTime = target;
+            this.loadVideo(this.currentUrl);
+        }
     }
 
     toggleMute() {
@@ -978,6 +1109,7 @@ class WatchPage {
         if (this.captionsMenuOpen) {
             this.closeCaptionsMenu();
         } else {
+            this.closeAudioMenu();
             this.updateCaptionsTracks();
             this.captionsMenu?.classList.remove('hidden');
             this.captionsMenuOpen = true;
@@ -998,7 +1130,70 @@ class WatchPage {
 
     updateCaptionsTracks() {
         if (!this.captionsList || !this.video) return;
-        this.getCaptionTracks().render(this.captionsList, () => this.closeCaptionsMenu());
+        this.getCaptionTracks().render(this.captionsList, choice => {
+            this.rememberSubtitleLanguage(choice);
+            this.closeCaptionsMenu();
+        });
+    }
+
+    getStoredSubtitleLanguage() {
+        try { return localStorage.getItem('nodecast-subtitle-lang') || ''; } catch (error) { return ''; }
+    }
+
+    /** Remember the language of a chosen subtitle ('off' for none); a loaded file says nothing about it. */
+    rememberSubtitleLanguage(choice) {
+        if (choice?.external) return;
+        const language = choice ? CaptionTracks.languageKey(choice.language) : 'off';
+        if (!language) return;
+        try { localStorage.setItem('nodecast-subtitle-lang', language); } catch (error) { /* storage blocked */ }
+    }
+
+    /** Read a local .srt/.vtt file and show it; nothing is uploaded. */
+    async loadSubtitleFile(file) {
+        if (!file) return;
+        if (file.size > 5 * 1024 * 1024) { console.warn('[WatchPage] Subtitle file is too large:', file.name); return; }
+        const generation = this.playbackGeneration;
+        this.closeCaptionsMenu();
+        try {
+            const text = CaptionTracks.decodeSubtitle(await file.arrayBuffer());
+            if (generation !== this.playbackGeneration) return;
+            if (!this.getCaptionTracks().loadExternal(file.name, text)) console.warn('[WatchPage] No subtitle cues found in', file.name);
+        } catch (error) {
+            console.warn('[WatchPage] Could not read subtitle file:', error.message);
+        }
+    }
+
+    // === Audio tracks ===
+
+    toggleAudioMenu() {
+        if (this.audioMenuOpen) {
+            this.closeAudioMenu();
+        } else {
+            this.closeCaptionsMenu();
+            this.updateAudioTracks();
+            this.audioMenu?.classList.remove('hidden');
+            this.audioMenuOpen = true;
+        }
+    }
+
+    closeAudioMenu() {
+        this.audioMenu?.classList.add('hidden');
+        this.audioMenuOpen = false;
+    }
+
+    getAudioTracks() {
+        if (!this.audioTracks) this.audioTracks = new AudioTracks();
+        return this.audioTracks;
+    }
+
+    updateAudioTracks() {
+        const audio = this.getAudioTracks();
+        this.audioWrapper?.classList.toggle('hidden', !audio.available);
+        if (!this.audioList) return;
+        audio.render(this.audioList, (track, active) => {
+            this.closeAudioMenu();
+            if (!active) this.switchAudioTrack(track);
+        });
     }
 
     // === Overlay Auto-Hide ===
