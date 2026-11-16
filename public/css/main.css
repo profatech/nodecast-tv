@@ -4914,3 +4914,10 @@ kbd {
   border: 1px solid #222844;
   border-radius: 8px;
 }
+
+/* Theme-only blocks: Classic hides them, themes opt in */
+.home-greeting,
+.home-hero,
+.live-info-cards {
+  display: none;
+}

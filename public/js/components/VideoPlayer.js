@@ -1210,6 +1210,34 @@ class VideoPlayer {
                 upNextList.appendChild(li);
             });
         }
+
+        this.updateLiveInfoCards(channel, epgData);
+    }
+
+    /**
+     * Fill the "Now / Up next" cards below the live player.
+     * The cards only show in themes that style them (hidden in Classic).
+     */
+    updateLiveInfoCards(channel, epgData) {
+        const cards = document.getElementById('live-info-cards');
+        if (!cards) return;
+
+        const fmt = (d) => {
+            const date = new Date(d);
+            return isNaN(date) ? '' : date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+        };
+        const channelName = channel.name || channel.tvgName || 'Unknown Channel';
+        const current = epgData && epgData.current;
+        const next = epgData && epgData.upcoming && epgData.upcoming[0];
+
+        document.getElementById('live-info-now').textContent = current ? current.title : channelName;
+        document.getElementById('live-info-now-meta').textContent = current
+            ? `${fmt(current.start)} – ${fmt(current.stop)} · ${channelName}`
+            : 'No programme information';
+        document.getElementById('live-info-next').textContent = next ? next.title : '—';
+        document.getElementById('live-info-next-meta').textContent = next ? `${fmt(next.start)}` : '';
+
+        cards.classList.remove('hidden');
     }
 
     /**

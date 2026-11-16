@@ -31,6 +31,11 @@ class HomePage {
 
         pageHome.innerHTML = `
             <div class="dashboard-content" id="home-content">
+                <header class="home-greeting">
+                    <h1>${this.getGreeting()}</h1>
+                </header>
+                <section class="home-hero hidden" id="home-hero" aria-label="Continue watching"></section>
+
                 <section class="dashboard-section" id="favorite-channels-section">
                     <div class="section-header">
                         <h2>Favorite Channels</h2>
@@ -302,6 +307,7 @@ class HomePage {
         }
 
         section.classList.remove('hidden');
+        this.renderHero(items[0]);
         list.innerHTML = items.map(item => this.createCard(item)).join('');
 
         // Attach click listeners
@@ -323,6 +329,69 @@ class HomePage {
 
         // Update scroll arrows after content renders
         this.updateScrollArrows();
+    }
+
+    getGreeting() {
+        const hour = new Date().getHours();
+        if (hour < 5) return 'Good night';
+        if (hour < 12) return 'Good morning';
+        if (hour < 18) return 'Good afternoon';
+        return 'Good evening';
+    }
+
+    escapeHtml(text) {
+        return String(text ?? '')
+            .replace(/&/g, '&amp;')
+            .replace(/</g, '&lt;')
+            .replace(/>/g, '&gt;')
+            .replace(/"/g, '&quot;')
+            .replace(/'/g, '&#39;');
+    }
+
+    /**
+     * Large "Continue watching" banner for the most recent history item.
+     * Only themes that style .home-hero show it (hidden in Classic).
+     */
+    renderHero(item) {
+        const hero = document.getElementById('home-hero');
+        if (!hero) return;
+        if (!item) {
+            hero.classList.add('hidden');
+            return;
+        }
+
+        const data = item.data || {};
+        const type = item.item_type || item.type;
+        const title = item.name || data.title || 'Unknown Title';
+        const subtitle = data.subtitle || (type === 'movie' ? 'Movie' : 'Series');
+        const progress = Number(item.progress) || 0;
+        const duration = Number(item.duration) || 0;
+        const percent = duration ? Math.min(100, Math.round((progress / duration) * 100)) : 0;
+        const minutesLeft = duration ? Math.max(0, Math.round((duration - progress) / 60)) : 0;
+
+        const poster = data.poster || item.stream_icon || '/img/poster-placeholder.jpg';
+        const posterUrl = poster.startsWith('http') ? `/api/proxy/image?url=${encodeURIComponent(poster)}` : poster;
+        const safePoster = this.escapeHtml(posterUrl);
+
+        hero.innerHTML = `
+            <div class="home-hero-backdrop" aria-hidden="true"></div>
+            <div class="home-hero-body">
+                <span class="home-hero-eyebrow">Continue watching${minutesLeft ? ` · ${minutesLeft} min left` : ''}</span>
+                <h2 class="home-hero-title">${this.escapeHtml(title)}</h2>
+                <p class="home-hero-subtitle">${this.escapeHtml(subtitle)}</p>
+                <div class="home-hero-progress" aria-hidden="true"><span style="width: ${percent}%"></span></div>
+                <div class="home-hero-actions">
+                    <button type="button" class="btn btn-primary home-hero-resume">
+                        <svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M8 5v14l11-7z"/></svg>
+                        Resume
+                    </button>
+                </div>
+            </div>
+            <img class="home-hero-poster" src="${safePoster}" alt="" loading="lazy" onerror="this.remove()">
+        `;
+        hero.querySelector('.home-hero-backdrop').style.backgroundImage = `url(${JSON.stringify(posterUrl)})`;
+        hero.classList.remove('hidden');
+        hero.querySelector('.home-hero-resume').addEventListener('click', () => this.playItem(item, true));
     }
 
     navigateToSeries(item) {

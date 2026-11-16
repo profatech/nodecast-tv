@@ -12,7 +12,7 @@
   <link rel="icon" type="image/svg+xml" href="/favicon.svg">
   <script src="/js/theme.js?v=1"></script>
   <link rel="stylesheet" href="css/main.css?v=2.2.7.1">
-  <link rel="stylesheet" href="css/themes/midnight-glass.css?v=1">
+  <link rel="stylesheet" href="css/themes/midnight-glass.css?v=2">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Outfit:wght@600;800&display=swap"
@@ -289,6 +289,20 @@
                   <h4>Up Next</h4>
                   <ul id="up-next-list"></ul>
                 </div>
+              </div>
+            </div>
+
+            <!-- Now / Up next cards under the player (shown by themes that style them) -->
+            <div class="live-info-cards hidden" id="live-info-cards">
+              <div class="live-info-card">
+                <span class="live-info-label"><span class="live-badge">LIVE</span> Now</span>
+                <span class="live-info-title" id="live-info-now">No programme information</span>
+                <span class="live-info-meta" id="live-info-now-meta"></span>
+              </div>
+              <div class="live-info-card">
+                <span class="live-info-label">Up next</span>
+                <span class="live-info-title" id="live-info-next">—</span>
+                <span class="live-info-meta" id="live-info-next-meta"></span>
               </div>
             </div>
           </section>
@@ -1198,11 +1212,11 @@
   <script src="/js/components/HlsAudioRecovery.js?v=1"></script>
   <script src="/js/components/PlaybackProbe.js?v=2"></script>
   <script src="/js/components/PlayerFullscreen.js?v=1"></script>
-  <script src="/js/components/VideoPlayer.js?v=9"></script>
+  <script src="/js/components/VideoPlayer.js?v=10"></script>
   <script src="/js/components/ChannelList.js?v=4"></script>
   <script src="/js/components/SourceManager.js?v=3"></script>
   <script src="/js/components/EpgGuide.js?v=2"></script>
-  <script src="/js/pages/HomePage.js?v=2"></script>
+  <script src="/js/pages/HomePage.js?v=3"></script>
   <script src="/js/pages/LivePage.js?v=3"></script>
   <script src="/js/pages/Guide.js?v=2"></script>
   <script src="/js/pages/MoviesPage.js?v=4"></script>
