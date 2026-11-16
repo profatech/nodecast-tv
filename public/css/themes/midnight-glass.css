@@ -560,6 +560,15 @@
   padding-bottom: 4px;
   overflow-x: auto;
   scrollbar-width: thin;
+  scrollbar-color: var(--color-border-light) transparent;
+}
+
+[data-theme="midnight-glass"] .channel-chips::-webkit-scrollbar {
+  height: 4px;
+}
+
+[data-theme="midnight-glass"] .channel-chips::-webkit-scrollbar-track {
+  background: transparent;
 }
 
 [data-theme="midnight-glass"] .channel-chip {
