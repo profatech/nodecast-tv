@@ -10,10 +10,12 @@
   <title>nodecast-tv | IPTV Player</title>
   <meta name="description" content="Stream live TV, movies, and series with EPG support">
   <link rel="icon" type="image/svg+xml" href="/favicon.svg">
-  <link rel="stylesheet" href="css/main.css?v=2.2.7">
+  <script src="/js/theme.js?v=1"></script>
+  <link rel="stylesheet" href="css/main.css?v=2.2.7.1">
+  <link rel="stylesheet" href="css/themes/midnight-glass.css?v=1">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Outfit:wght@800&display=swap"
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Outfit:wght@600;800&display=swap"
     rel="stylesheet">
   <!-- HLS.js for video playback -->
   <script src="https://cdn.jsdelivr.net/npm/hls.js@1.5.7/dist/hls.min.js"></script>
@@ -402,6 +404,7 @@
           <div class="tabs">
             <button class="tab active" data-tab="sources">Sources</button>
             <button class="tab" data-tab="player">Player</button>
+            <button class="tab" data-tab="appearance">Appearance</button>
             <button class="tab" data-tab="transcode">Transcoding</button>
             <button class="tab" data-tab="content">Manage Content</button>
             <button class="tab" data-tab="users" id="users-tab" style="display:none;">Users</button>
@@ -528,6 +531,38 @@
                 <div class="shortcut"><kbd>M</kbd> Mute/Unmute</div>
                 <div class="shortcut"><kbd>I</kbd> Toggle info overlay</div>
                 <div class="shortcut"><kbd>PgUp</kbd> / <kbd>PgDn</kbd> Channel up/down</div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Appearance Tab -->
+          <div id="tab-appearance" class="tab-content">
+            <div class="settings-section">
+              <h3>Theme</h3>
+              <p class="hint">Saved in this browser only.</p>
+              <div class="theme-options" role="radiogroup" aria-label="Theme">
+                <label class="theme-option">
+                  <input type="radio" name="ui-theme" value="midnight-glass">
+                  <span class="theme-swatch theme-swatch-midnight" aria-hidden="true">
+                    <span class="theme-swatch-rail"></span>
+                    <span class="theme-swatch-body"><span></span><span></span></span>
+                  </span>
+                  <span class="setting-info">
+                    <span class="setting-label">Midnight Glass</span>
+                    <span class="setting-hint">Deep navy, frosted panels, icon rail on wide screens</span>
+                  </span>
+                </label>
+                <label class="theme-option">
+                  <input type="radio" name="ui-theme" value="classic">
+                  <span class="theme-swatch theme-swatch-classic" aria-hidden="true">
+                    <span class="theme-swatch-bar"></span>
+                    <span class="theme-swatch-body"><span></span><span></span></span>
+                  </span>
+                  <span class="setting-info">
+                    <span class="setting-label">Classic</span>
+                    <span class="setting-hint">The original nodecast-tv look with a top navigation bar</span>
+                  </span>
+                </label>
               </div>
             </div>
           </div>
@@ -1172,7 +1207,7 @@
   <script src="/js/pages/Guide.js?v=2"></script>
   <script src="/js/pages/MoviesPage.js?v=4"></script>
   <script src="/js/pages/SeriesPage.js?v=1"></script>
-  <script src="/js/pages/Settings.js?v=4"></script>
+  <script src="/js/pages/Settings.js?v=5"></script>
   <script src="/js/pages/WatchPage.js?v=10"></script>
   <script src="/js/app.js?v=5"></script>
 

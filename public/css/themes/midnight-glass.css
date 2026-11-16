@@ -1,0 +1,328 @@
+/* =====================================================
+ * NodeCast TV - "Midnight Glass" theme
+ * Active when <html data-theme="midnight-glass">.
+ * Deep navy surfaces, frosted panels, rounder shapes and,
+ * on wide screens, a vertical icon rail instead of the top bar.
+ * ===================================================== */
+
+:root[data-theme="midnight-glass"] {
+  --color-bg-primary: #070912;
+  --color-bg-secondary: #0c0f1c;
+  --color-bg-tertiary: #11152a;
+  --color-bg-hover: #171c36;
+  --color-bg-active: #1e2445;
+
+  --color-surface: #0e1224;
+  --color-surface-hover: #151a33;
+  --color-surface-active: #1c2242;
+
+  --color-accent: #6366f1;
+  --color-accent-hover: #818cf8;
+  --color-accent-dim: rgba(99, 102, 241, 0.18);
+
+  --color-text-primary: #eef0f8;
+  --color-text-secondary: #a3a9c4;
+  --color-text-muted: #8e94ad;
+  --color-text-bright: #ffffff;
+
+  --color-border: #1c2136;
+  --color-border-light: #2a3152;
+
+  --glass-bg: rgba(12, 15, 28, 0.78);
+  --glass-border: rgba(255, 255, 255, 0.08);
+
+  --radius-sm: 10px;
+  --radius-md: 12px;
+  --radius-lg: 18px;
+
+  --shadow-glow: 0 0 24px rgba(99, 102, 241, 0.35);
+
+  --rail-width: 84px;
+}
+
+[data-theme="midnight-glass"] body {
+  background: var(--color-bg-primary);
+}
+
+/* ---------- Headings use Outfit ---------- */
+[data-theme="midnight-glass"] .section-header h2,
+[data-theme="midnight-glass"] .settings-container h2,
+[data-theme="midnight-glass"] .movies-header h2,
+[data-theme="midnight-glass"] .series-header h2,
+[data-theme="midnight-glass"] .guide-header h2 {
+  font-family: 'Outfit', 'Inter', sans-serif;
+  font-weight: 600;
+  letter-spacing: -0.01em;
+}
+
+/* ---------- Inputs ---------- */
+[data-theme="midnight-glass"] .search-input,
+[data-theme="midnight-glass"] .form-input,
+[data-theme="midnight-glass"] .source-select {
+  background: var(--color-bg-tertiary);
+  border-color: #222844;
+}
+
+[data-theme="midnight-glass"] .search-input {
+  border-radius: var(--radius-full);
+  padding-left: 16px;
+}
+
+[data-theme="midnight-glass"] .search-input:focus,
+[data-theme="midnight-glass"] .form-input:focus {
+  border-color: var(--color-accent);
+  box-shadow: 0 0 0 3px var(--color-accent-dim);
+  outline: none;
+}
+
+/* ---------- Channel list ---------- */
+[data-theme="midnight-glass"] .channel-sidebar {
+  background: var(--color-bg-secondary);
+}
+
+[data-theme="midnight-glass"] .channel-item {
+  border: 1px solid transparent;
+  border-radius: var(--radius-md);
+  margin: 2px 6px;
+}
+
+[data-theme="midnight-glass"] .channel-item.active {
+  background: #151a36;
+  border: 1px solid var(--color-accent);
+  border-left-width: 1px;
+}
+
+[data-theme="midnight-glass"] .group-header {
+  background: transparent;
+  border-radius: var(--radius-md);
+}
+
+[data-theme="midnight-glass"] .group-header:hover {
+  background: var(--color-bg-hover);
+}
+
+/* ---------- Tabs become pills ---------- */
+[data-theme="midnight-glass"] .tabs {
+  border-bottom: 0;
+  gap: 6px;
+  flex-wrap: wrap;
+}
+
+[data-theme="midnight-glass"] .tab {
+  border-bottom: 0;
+  border-radius: var(--radius-full);
+  padding: 8px 16px;
+  background: var(--color-bg-tertiary);
+}
+
+[data-theme="midnight-glass"] .tab:hover {
+  color: var(--color-text-primary);
+  background: var(--color-bg-hover);
+}
+
+[data-theme="midnight-glass"] .tab.active {
+  background: var(--color-accent);
+  color: #fff;
+}
+
+/* ---------- Buttons ---------- */
+[data-theme="midnight-glass"] .btn-primary:hover {
+  background: var(--color-accent-hover);
+  box-shadow: var(--shadow-glow);
+}
+
+[data-theme="midnight-glass"] .btn-secondary {
+  background: rgba(255, 255, 255, 0.04);
+  border: 1px solid var(--color-border-light);
+}
+
+/* ---------- Cards, posters and tiles ---------- */
+[data-theme="midnight-glass"] .dashboard-card,
+[data-theme="midnight-glass"] .movie-card,
+[data-theme="midnight-glass"] .series-card {
+  background: var(--color-surface);
+  border: 1px solid #1f2440;
+  border-radius: var(--radius-lg);
+}
+
+[data-theme="midnight-glass"] .dashboard-card:hover,
+[data-theme="midnight-glass"] .movie-card:hover,
+[data-theme="midnight-glass"] .series-card:hover {
+  border-color: var(--color-border-light);
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.45);
+}
+
+[data-theme="midnight-glass"] .channel-tile {
+  background: var(--color-surface);
+  border: 1px solid #1f2440;
+  border-radius: var(--radius-lg);
+}
+
+[data-theme="midnight-glass"] .channel-tile:hover {
+  background: var(--color-surface-hover);
+}
+
+/* ---------- Settings sections as glass panels ---------- */
+[data-theme="midnight-glass"] .settings-section {
+  background: var(--color-surface);
+  border: 1px solid #1f2440;
+  border-radius: var(--radius-lg);
+  padding: var(--space-lg);
+}
+
+/* ---------- EPG ---------- */
+[data-theme="midnight-glass"] .epg-program {
+  background: var(--color-surface);
+  border-right-color: var(--color-bg-primary);
+}
+
+[data-theme="midnight-glass"] .epg-program:hover {
+  background: var(--color-surface-hover);
+}
+
+[data-theme="midnight-glass"] .epg-program.current {
+  background: #171c3a;
+  border-left: 0;
+  box-shadow: inset 0 0 0 1px var(--color-accent);
+}
+
+/* ---------- Modals and menus ---------- */
+[data-theme="midnight-glass"] .modal-content,
+[data-theme="midnight-glass"] .context-menu,
+[data-theme="midnight-glass"] .player-overflow-menu {
+  background: rgba(14, 18, 36, 0.92);
+  backdrop-filter: blur(16px);
+  border-color: var(--glass-border);
+}
+
+/* ---------- Now Playing pill: solid accent, no purple gradient ---------- */
+[data-theme="midnight-glass"] .now-playing-indicator {
+  background: var(--color-accent);
+  box-shadow: var(--shadow-glow);
+}
+
+/* ---------- Scrollbar ---------- */
+[data-theme="midnight-glass"] ::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+/* =====================================================
+   Vertical icon rail (wide screens only).
+   Narrower screens keep the existing top bar / mobile menu.
+   ===================================================== */
+@media (min-width: 1025px) {
+  :root[data-theme="midnight-glass"] {
+    /* Layout calcs subtract the navbar height; the rail takes none. */
+    --navbar-height: 0px;
+  }
+
+  [data-theme="midnight-glass"] #app {
+    flex-direction: row;
+  }
+
+  [data-theme="midnight-glass"] .main-content {
+    min-width: 0;
+  }
+
+  [data-theme="midnight-glass"] .navbar {
+    flex: 0 0 var(--rail-width);
+    width: var(--rail-width);
+    height: auto;
+    flex-direction: column;
+    justify-content: flex-start;
+    gap: 18px;
+    padding: 20px 12px;
+    padding-left: max(12px, var(--safe-area-inset-left));
+    padding-right: 12px;
+    background: var(--color-bg-secondary);
+    backdrop-filter: none;
+    border-bottom: 0;
+    border-right: 1px solid var(--color-border);
+    overflow-y: auto;
+    overflow-x: hidden;
+  }
+
+  [data-theme="midnight-glass"] .navbar-brand {
+    flex-direction: column;
+    gap: 6px;
+  }
+
+  [data-theme="midnight-glass"] .navbar-brand .logo svg {
+    width: 30px;
+    height: 34px;
+  }
+
+  [data-theme="midnight-glass"] .brand-text {
+    display: none;
+  }
+
+  [data-theme="midnight-glass"] .version-badge {
+    margin-left: 0;
+    background: var(--color-bg-tertiary);
+    color: var(--color-text-secondary);
+  }
+
+  [data-theme="midnight-glass"] .navbar-menu {
+    flex-direction: column;
+    align-items: center;
+    gap: 8px;
+    flex: 1;
+    width: 100%;
+  }
+
+  [data-theme="midnight-glass"] .nav-link {
+    width: 60px;
+    min-height: 56px;
+    flex-direction: column;
+    justify-content: center;
+    gap: 4px;
+    padding: 6px 4px;
+    border-radius: 14px;
+    font-size: 11px;
+    font-weight: 500;
+    text-align: center;
+    color: var(--color-text-secondary);
+  }
+
+  [data-theme="midnight-glass"] .nav-link .icon {
+    width: 22px;
+    height: 22px;
+  }
+
+  [data-theme="midnight-glass"] .nav-link.active {
+    background: var(--color-accent);
+    color: #fff;
+  }
+
+  /* Settings and Logout sit at the bottom of the rail */
+  [data-theme="midnight-glass"] .nav-link[data-page="settings"] {
+    margin-top: auto;
+  }
+
+  /* Now Playing becomes a compact play button at the top of the rail */
+  [data-theme="midnight-glass"] .now-playing-indicator {
+    width: 48px;
+    height: 48px;
+    max-width: none;
+    margin: 0 0 6px;
+    padding: 0;
+    justify-content: center;
+    border-radius: 14px;
+  }
+
+  [data-theme="midnight-glass"] .now-playing-text {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    overflow: hidden;
+    clip: rect(0 0 0 0);
+  }
+
+  [data-theme="midnight-glass"] .now-playing-icon {
+    font-size: 16px;
+  }
+
+  [data-theme="midnight-glass"] .sidebar-expand-btn {
+    top: var(--space-md);
+  }
+}

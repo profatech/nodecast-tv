@@ -4820,3 +4820,97 @@ kbd {
     max-width: 70px;
   }
 }
+
+/* =====================================================
+   Theme picker (Settings > Appearance)
+   ===================================================== */
+.theme-options {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
+  gap: var(--space-md);
+  margin-top: var(--space-md);
+}
+
+.theme-option {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-sm);
+  padding: var(--space-md);
+  background: var(--color-bg-secondary);
+  border: 2px solid var(--color-border);
+  border-radius: var(--radius-md);
+  cursor: pointer;
+  transition: border-color var(--transition-fast);
+}
+
+.theme-option:hover {
+  border-color: var(--color-border-light);
+}
+
+.theme-option:has(input:checked) {
+  border-color: var(--color-accent);
+}
+
+.theme-option:has(input:focus-visible) {
+  outline: 2px solid var(--color-accent-hover);
+  outline-offset: 2px;
+}
+
+.theme-option input {
+  position: absolute;
+  opacity: 0;
+  pointer-events: none;
+}
+
+.theme-swatch {
+  display: flex;
+  height: 84px;
+  border-radius: 8px;
+  overflow: hidden;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.theme-swatch-midnight {
+  background: #070912;
+}
+
+.theme-swatch-classic {
+  flex-direction: column;
+  background: #0a0a0f;
+}
+
+.theme-swatch-rail {
+  flex: 0 0 18px;
+  background: #0c0f1c;
+  border-right: 1px solid #1c2136;
+  background-image: linear-gradient(#6366f1, #6366f1);
+  background-size: 10px 10px;
+  background-position: 4px 10px;
+  background-repeat: no-repeat;
+}
+
+.theme-swatch-bar {
+  flex: 0 0 14px;
+  background: #12121a;
+  border-bottom: 1px solid #27272a;
+}
+
+.theme-swatch-body {
+  flex: 1;
+  display: flex;
+  gap: 6px;
+  padding: 10px;
+}
+
+.theme-swatch-body span {
+  flex: 1;
+  border-radius: 6px;
+  background: #1a1a25;
+}
+
+.theme-swatch-midnight .theme-swatch-body span {
+  background: #11152a;
+  border: 1px solid #222844;
+  border-radius: 8px;
+}

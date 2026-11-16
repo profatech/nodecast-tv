@@ -20,6 +20,9 @@ class SettingsPage {
         // Player settings
         this.initPlayerSettings();
 
+        // Appearance (theme)
+        this.initAppearanceSettings();
+
         // Transcoding settings
         this.initTranscodingSettings();
 
@@ -93,6 +96,19 @@ class SettingsPage {
 
         // Update last refreshed display
         this.updateEpgLastRefreshed();
+    }
+
+    initAppearanceSettings() {
+        const theme = window.NodecastTheme;
+        if (!theme) return;
+
+        const current = theme.get();
+        document.querySelectorAll('input[name="ui-theme"]').forEach(radio => {
+            radio.checked = radio.value === current;
+            radio.addEventListener('change', () => {
+                if (radio.checked) theme.set(radio.value);
+            });
+        });
     }
 
     async initTranscodingSettings() {
