@@ -16,6 +16,7 @@ class ChannelList {
         this.groups = [];
         this.hiddenItems = new Set(); // Set<"type:sourceId:itemId">
         this.collapsedGroups = new Set(); // Track collapsed groups
+        this.activeCategory = null; // Group picked from the category chips (null = all)
         this._userExpandedGroups = new Set(); // Track groups user has explicitly expanded
         this.favorites = []; // Array of favorite objects
         this.visibleFavorites = new Set(); // Set<"sourceId:channelId">
@@ -350,6 +351,17 @@ class ChannelList {
             });
         });
 
+        // Category chips: built from every visible group, then narrow to the picked one
+        this.renderCategoryChips(this.sortedGroups);
+        if (this.activeCategory) {
+            if (this.sortedGroups.includes(this.activeCategory)) {
+                this.sortedGroups = [this.activeCategory];
+            } else {
+                this.activeCategory = null;
+                this.renderCategoryChips(this.sortedGroups);
+            }
+        }
+
         this.groupedChannels = groupedChannels;
         this.showHidden = showHidden;
 
@@ -424,6 +436,49 @@ class ChannelList {
 
         // Start observing loader for additional batches
         this.observer.observe(this.loader);
+    }
+
+    /**
+     * Render the category chip row (All, Favorites, then each group).
+     * Picking a chip shows only that group, expanded. Themes decide whether the row shows.
+     */
+    renderCategoryChips(groups) {
+        const row = document.getElementById('channel-chips');
+        if (!row) return;
+
+        row.innerHTML = '';
+        if (groups.length < 2) return;
+
+        const makeChip = (label, value) => {
+            const chip = document.createElement('button');
+            chip.type = 'button';
+            chip.className = 'channel-chip';
+            chip.textContent = label;
+            const active = (this.activeCategory || null) === value;
+            chip.classList.toggle('active', active);
+            chip.setAttribute('aria-pressed', active ? 'true' : 'false');
+            chip.addEventListener('click', () => this.setCategory(value));
+            return chip;
+        };
+
+        row.appendChild(makeChip('All', null));
+        groups.forEach(group => row.appendChild(makeChip(group, group)));
+
+        const activeChip = row.querySelector('.channel-chip.active');
+        if (activeChip && this.activeCategory) {
+            activeChip.scrollIntoView({ block: 'nearest', inline: 'nearest' });
+        }
+    }
+
+    setCategory(groupName) {
+        this.activeCategory = groupName;
+        if (groupName && this.collapsedGroups.has(groupName)) {
+            this.collapsedGroups.delete(groupName);
+            this._userExpandedGroups.add(groupName);
+            this.saveCollapsedState();
+        }
+        this.render();
+        this.container.scrollTop = 0;
     }
 
     /**

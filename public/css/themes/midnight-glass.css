@@ -549,3 +549,48 @@
   border-radius: var(--radius-full);
   background: var(--color-bg-tertiary);
 }
+
+/* =====================================================
+   Channel category chips
+   ===================================================== */
+[data-theme="midnight-glass"] .channel-chips:not(:empty) {
+  display: flex;
+  gap: 6px;
+  margin-top: 12px;
+  padding-bottom: 4px;
+  overflow-x: auto;
+  scrollbar-width: thin;
+}
+
+[data-theme="midnight-glass"] .channel-chip {
+  flex-shrink: 0;
+  min-height: 32px;
+  padding: 0 12px;
+  border: 1px solid #222844;
+  border-radius: var(--radius-full);
+  background: var(--color-bg-tertiary);
+  color: var(--color-text-secondary);
+  font: inherit;
+  font-size: 12px;
+  font-weight: 500;
+  white-space: nowrap;
+  cursor: pointer;
+  transition: background var(--transition-fast), color var(--transition-fast);
+}
+
+[data-theme="midnight-glass"] .channel-chip:hover {
+  background: var(--color-bg-hover);
+  color: var(--color-text-primary);
+}
+
+[data-theme="midnight-glass"] .channel-chip.active {
+  background: var(--color-accent);
+  border-color: var(--color-accent);
+  color: #fff;
+  font-weight: 600;
+}
+
+[data-theme="midnight-glass"] .channel-chip:focus-visible {
+  outline: 2px solid var(--color-accent-hover);
+  outline-offset: 2px;
+}

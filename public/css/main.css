@@ -4921,3 +4921,7 @@ kbd {
 .live-info-cards {
   display: none;
 }
+
+.channel-chips {
+  display: none;
+}
